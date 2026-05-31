@@ -5,10 +5,24 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' }
 });
 
-// Attach token from storage
+// Request deduplication
+const pendingRequests = new Map();
+
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
   if (token) config.headers.Authorization = `Bearer ${token}`;
+
+  // Deduplicate GET requests
+  if (config.method === 'get') {
+    const key = config.url + JSON.stringify(config.params || {});
+    if (pendingRequests.has(key)) {
+      return pendingRequests.get(key);
+    }
+    const promise = Promise.resolve(config);
+    pendingRequests.set(key, promise);
+    setTimeout(() => pendingRequests.delete(key), 10000);
+  }
+
   return config;
 });
 
@@ -44,14 +58,11 @@ api.interceptors.response.use(
       try {
         const rt = localStorage.getItem('refreshToken') || sessionStorage.getItem('refreshToken');
         if (!rt) throw new Error('No refresh token');
-
         const { data } = await axios.post(`${api.defaults.baseURL}/public/auth/refresh`, { refreshToken: rt });
         const newToken = data.data.accessToken;
         const remember = !!localStorage.getItem('refreshToken');
-
         if (remember) localStorage.setItem('accessToken', newToken);
         else sessionStorage.setItem('accessToken', newToken);
-
         api.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
         processQueue(null, newToken);
         original.headers.Authorization = `Bearer ${newToken}`;
