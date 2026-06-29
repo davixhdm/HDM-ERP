@@ -49,16 +49,20 @@ api.interceptors.response.use(
       const message = error.response?.data?.message;
 
       if (code === 'TRIAL_EXPIRED') {
+        const token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
+        if (token) sessionStorage.setItem('renew_token', token);
         localStorage.setItem('trial_expired', 'true');
         localStorage.setItem('expiry_message', message || 'Your free trial has ended.');
-        window.location.href = '/pricing?expired=trial';
+        window.location.href = '/renew';
         return Promise.reject(error);
       }
 
       if (code === 'SUBSCRIPTION_EXPIRED') {
+        const token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
+        if (token) sessionStorage.setItem('renew_token', token);
         localStorage.setItem('subscription_expired', 'true');
         localStorage.setItem('expiry_message', message || 'Your subscription has expired.');
-        window.location.href = '/pricing?expired=subscription';
+        window.location.href = '/renew';
         return Promise.reject(error);
       }
 
