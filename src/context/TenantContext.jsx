@@ -12,11 +12,18 @@ export const TenantProvider = ({ children }) => {
 
   const refreshModules = useCallback(async () => {
     try {
-      const res = await getModules();
-      const data = res.data.data;
+      const [modulesRes, companyRes] = await Promise.all([
+        getModules(),
+        api.get('/tenant/company')
+      ]);
+      const data = modulesRes.data.data;
+      const companyData = companyRes.data?.data || companyRes.data || {};
       setModules(data.modules || {});
       setPlan(data.plan || '');
-      setTenant(prev => prev || {});
+      setTenant({
+        companyName: companyData.companyName || companyData.businessName || '',
+        ...(data.tenant || {})
+      });
       return data;
     } catch (err) {
       console.error('Failed to refresh modules:', err);
